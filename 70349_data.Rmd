@@ -1,0 +1,251 @@
+---
+title: "70349 Data - Economic Growth"
+date: 
+output: html_document
+---
+
+```{r, results = FALSE, message = FALSE}
+rm(list=ls())
+## load packages
+library(tidyverse)
+library(wbstats)
+library(WDI)
+library(imfr)
+
+```
+
+```{r}
+
+rd <- read_excel("RD_Expenditure_Pct.xlsx") #R&D
+
+#Innovation
+rd <- rd %>% 
+  rename("Country" = "Country Name") #rename column names
+
+patents <-read_excel("Patent_Apps_Residents.xlsx") %>% 
+  rename("Country" = "Country Name")
+
+hitech <-read_excel("High_Tech_Exports_Pct.xlsx") %>% 
+  rename("Country" = "Country Name")
+
+#Agriculture
+agri <- read_excel("Agriculture_GDP.xls") %>% 
+  rename("Country" = "Country Name")
+
+#GDP growth
+gdp_growth <- read_excel("GDP_Growth.xls")%>% 
+  rename("Country" = "Country Name")
+
+
+#Labor Force
+workingPop <- read_excel("Population_15_64.xls") %>% 
+  rename("Country" = "Country Name")
+
+Labor_force <- read_csv("Labor_Age_Sex_Area.csv") %>% 
+  select(-c("indicator.label", "source.label", "obs_status.label")) %>% 
+  rename("Country" = "ref_area.label", "Sex" = "sex.label", "Age" = "classif1.label", "Labor Force (%)" = "obs_value")
+
+Median_Age <- read_csv("Median_Age_Labor_Force.csv") %>% 
+  select(-c("indicator.label","source.label")) %>% 
+  rename("Country" = "ref_area.label","Sex" = "sex.label", "Labor Force" = "obs_value" )
+
+Output_per_Worker_Growth <- read_csv("Output_per_Worker_Growth.csv") %>% 
+  select(-c("indicator.label","source.label")) %>% 
+  rename("Country" = "ref_area.label", "Output per Worker Growth" = "obs_value")
+
+```
+
+
+```{r}
+
+rd_tidy <- rd %>% 
+  pivot_longer(cols = "1996":"2020", names_to = "year", values_to = "R&D as % of GDP")
+
+patents_tidy <- patents %>% 
+  pivot_longer(cols = "1980":"2020", names_to = "year", values_to = "Patent Applications by Residents")
+
+hitech_tidy <- hitech %>% 
+  pivot_longer(cols = "2007":"2020", names_to = "year", values_to = "High Tech Exports as % of Manufactured Exports")
+
+agri_tidy <- agri %>% 
+  pivot_longer(cols = "1960":"2020", names_to = "year", values_to = "Agriculture as % of GDP")
+
+gdp_growth_tidy <- gdp_growth %>% 
+  pivot_longer(cols = "1961":"2020", names_to = "year", values_to = "GDP Growth (Annual % Change)")
+
+workingPop_tidy <- workingPop %>% 
+  pivot_longer(cols = "1960":"2020", names_to = "year", values_to = "Population Ages 15-64 (% of Total Population)")
+
+
+```
+
+```{r}
+
+write.csv(patents_tidy, "patents_tidy.csv")
+write.csv(hitech_tidy, "hitech_tidy.csv")
+write.csv(agri_tidy, "agri_tidy.csv")
+write.csv(gdp_growth_tidy, "gdp_growth_tidy.csv")
+write.csv(workingPop_tidy, "workingPop_tidy.csv")
+
+```
+
+
+```{r}
+pop_data <- wb_data(country = "countries_only", indicator = "SP.POP.GROW", start_date = 2005, end_date = 2016)
+head(pop_data)
+
+test<- WDI(
+  country = "all",
+  indicator = "NY.GDP.PCAP.KD",
+  start = 1960,
+  end = 2020,
+  extra = FALSE,
+  cache = NULL,
+  latest = NULL,
+  language = "en"
+)
+
+```
+
+
+```{r}
+
+x = c("elecperpop" = "EG.ELC.ACCS.ZS", 
+      "cab" = "BN.CAB.XOKA.GD.ZS", 
+      "edb" = "IC.BUS.DFRN.XQ", 
+       "cpi" = "FP.CPI.TOTL.ZG",
+       "ratespread" = "FR.INR.LNDP"
+      )
+  
+data <- WDI(indicator = x, start = 1960, end = 2020)
+
+```
+
+
+```{r}
+
+RD_Wbstats <- wb_data(country = "countries_only", indicator = "GB.XPD.RSDV.GD.ZS", start_date = 1996, end_date = 2020)
+
+patent_apps <- wb_data(country = "countries_only", indicator = c("IP.PAT.RESD", "IP.PAT.NRES"), start_date = 1980, end_date = 2020)
+
+hitech_exports <- wb_data(country = "countries_only", indicator = "TX.VAL.TECH.MF.ZS", start_date = 2007, end_date = 2020)
+
+agriculture_GDP <- wb_data(country = "countries_only", indicator = "NV.AGR.TOTL.ZS", start_date = 1970, end_date = 2020)
+
+internet_mobile_usage <- wb_data(country = "countries_only", indicator = c("IT.NET.USER.ZS","IT.CEL.SETS.P2"), start_date = 1990, end_date = 2020)
+
+```
+
+
+```{r}
+
+pop15to64 <- wb_data(country = "countries_only", indicator = "SP.POP.1564.TO.ZS", start_date = 1960, end_date = 2020)
+
+labor_force <- wb_data(country = "countries_only", indicator = c("SL.UEM.TOTL.ZS", "SL.TLF.TOTL.IN"), start_date = 1990, end_date = 2020)
+
+gdp_growth <- wb_data(country = "countries_only", indicator = "NY.GDP.MKTP.KD.ZG", start_date = 1961, end_date = 2020)
+
+gdp_per_worker <-  wb_data(country = "countries_only", indicator = "SL.GDP.PCAP.EM.KD", start_date = 1991, end_date = 2020)
+  
+```
+
+
+#IMF Data (Takes time to load)
+
+
+```{r}
+
+ids <- as_tibble(imf_ids(return_raw = FALSE, times = 3))
+
+#APDREO #Asia econ outlook
+#MCDREO #Middle East Econ Outlook
+#WHDREO #Western Hemisphere
+#AFRREO #Sub-saharan econ outlook
+
+```
+
+#Asia APDREO 
+```{r}
+asia_codelist <- as_tibble(imf_codelist("APDREO", return_raw = FALSE, times = 3))
+#view(asia_codelist), same for all ids
+
+asia_codes <- as_tibble(imf_codes(codelist = "CL_INDICATOR_APDREO" ))
+#view(asia_codes)
+
+
+#Indicators in order:
+#GDP constant prices pct change, govt net lending/borrowing, Balance of payments, Unemployment rate
+
+asia_outlook <- 
+  imf_data(
+  "APDREO",
+  c("NGDP_RPCH", "GGXCNL_GDP", "BCA_GDP_BP6", "LUR"),
+  country = "all",
+  start = 2015,
+  end = current_year(),
+  freq = "A",
+  return_raw = FALSE,
+  print_url = FALSE, 
+  times = 3)
+
+```
+
+#Middle East MCDREO 
+```{r}
+me_codes <- as_tibble(imf_codes(codelist = "CL_INDICATOR_MCDREO" ))
+view(me_codes)
+
+
+#Indicators in order:
+#GDP constant prices pct change, Broad money, percent change, Net lending as pct of gdp, non oil pct of gdp
+
+me_outlook <- 
+  imf_data(
+  "MCDREO",
+  c("NGDP_R_PCH_PT", "FMB_PCH_PT", "GGENL_GDP_GDP_PT", "NGDPXO_R_PCH_PT"),
+  country = "all",
+  start = 2015,
+  end = current_year(),
+  freq = "A",
+  return_raw = FALSE,
+  print_url = FALSE, 
+  times = 3)
+
+```
+
+#Western Hemisphere WHDREO 
+
+```{r}
+wh_codes <- as_tibble(imf_codes(codelist = "CL_INDICATOR_WHDREO" ))
+view(wh_codes)
+
+#Indicators in order:
+#Unemployment rate, government lending/borrowing, Gross debt in percent of GDP, GDP, Balance of Payments
+wh_outlook <- 
+  imf_data(
+  "WHDREO",
+  c("LUR", "GGXCNL_GDP", "GGXWDG_GDP", "NGDP_RPCH", "BCA_GDP_BP6"),
+  country = "all",
+  start = 2015,
+  end = current_year(),
+  freq = "A",
+  return_raw = FALSE,
+  print_url = FALSE, 
+  times = 3)
+
+
+```
+
+#Sub-saharan econ outlook AFRREO (not working)
+
+```{r}
+af_codelist <- as_tibble(imf_codelist("AFRREO", return_raw = FALSE, times = 3))
+
+af_codes <- as_tibble(imf_codes(codelist = "CL_INDICATOR_AFRREO" ))
+
+```
+
+
+
+
+
